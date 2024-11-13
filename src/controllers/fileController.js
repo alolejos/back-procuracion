@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const { File } = require('../models');
+const { File, Expediente } = require('../models');
 const axios = require('axios');
 
 const s3 = new AWS.S3({
@@ -9,7 +9,6 @@ const s3 = new AWS.S3({
 });
 
 exports.generatepresignedurl = async (req, res) => {
-  console.log('BODY::::::', req.body);
 
   const params = {
     Bucket: 'procuracion-repo-bucket',
@@ -18,14 +17,11 @@ exports.generatepresignedurl = async (req, res) => {
     ContentType: req.body.fileType,
   };
   
-  console.log('params::::::', params);
-
   s3.getSignedUrl('putObject', params, (err, url) => {
     if (err) {
       console.log('ERROR que devuelve el s3::::::', err);
       return res.status(500).json({ error: 'Error generando la URL pre-firmada' });
     }
-    console.log('URL presigned::::::', url);
     res.json({ url });
   });
 };
@@ -63,5 +59,74 @@ exports.getFiles = async (req, res) => {
     res.json(files);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching files' });
+  }
+};
+
+exports.updateFile = async (req, res) => {
+  let newExpediente = false;
+  try {
+    console.log('req.body: ', req.body);
+    const { fileId } = req.params;
+    let tipo = req.body.mlData.tipo;
+    const { 
+      CUIJ, 
+      Criticidad,
+      Fuero,
+      Instancia,
+      Juzgado,
+      Resumen,
+      Secretaria,
+      Tematica,
+      TipoDeAccion 
+    } = req.body.mlData[tipo];
+
+    // Buscar o crear el expediente
+    let expediente = await Expediente.findOne({
+      where: {
+        numeroExpediente: CUIJ
+      },
+      defaults: {
+        // Otros campos por defecto si son necesarios
+        estado: 'ACTIVO'
+      }
+    });
+
+    if (!expediente) {
+      newExpediente = true;
+      expediente = await Expediente.create({
+        numeroExpediente: CUIJ,
+        fuero: Fuero,
+        numeroJuzgado: Juzgado,
+        numeroSecretaria: Secretaria,
+        sectorId: 1
+      });
+    }    
+     // Actualizar el archivo con el id del expediente y el resumen
+    const updatedFile = await File.update(
+      {
+        expedienteId: expediente.id,
+        tipo: tipo
+      },
+      {
+        where: { id: fileId }
+      }
+    );
+
+    if (updatedFile[0] === 0) {
+      return res.status(404).json({ error: 'Archivo no encontrado' });
+    }
+   
+    res.status(200).json({ 
+      message: 'Archivo actualizado exitosamente',
+      expediente: expediente,
+      newExpediente
+    });
+
+  } catch (error) {
+    console.error('Error en updateFile:', error);
+    res.status(500).json({ 
+      error: 'Error al actualizar el archivo',
+      details: error.message 
+    });
   }
 };

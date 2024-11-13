@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { User } = require('../models');
+const { User, Alert } = require('../models');
+
 
 exports.login = async (req, res) => {
   try {
@@ -23,13 +24,22 @@ exports.login = async (req, res) => {
       { expiresIn: '1h' }
     );
 
+    // Buscar los alertas no leidas del usuario
+    const alerts = await Alert.findAll({
+      where: { sectorId: user.sectorId, estado: 'NOLEIDO' }
+    });
+
+    console.log('ALERTAS: ', alerts.length);
+
     res.json({
         token,
         user: {
           name: user.name,
           surname: user.surname,
           username: user.username,
-          userTypeId: user.userTypeId
+          sectorId: user.sectorId,
+          id: user.id,
+          alerts: alerts.length
         }
       });
   } catch (error) {
@@ -40,7 +50,7 @@ exports.login = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { username, password, name, surname, userTypeId } = req.body;
+    const { username, password, name, surname, sectorId } = req.body;
 
     console.log('req.body::::::', req.body);
 
@@ -56,7 +66,7 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       name,
       surname,
-      userTypeId
+      sectorId
     });
 
     res.status(201).json({ message: 'User registered successfully', userId: newUser.id });
