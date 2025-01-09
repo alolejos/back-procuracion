@@ -173,6 +173,10 @@ const Reporte = sequelize.define('Reporte', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  rolGcba: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   instancia: {
     type: DataTypes.STRING,
     allowNull: true
