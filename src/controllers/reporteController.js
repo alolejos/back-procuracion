@@ -19,7 +19,7 @@ exports.createReporte = async (req, res) => {
       numeroExpediente: datos[tipoPropiedad]?.CUIJ ?? null,
       resumen: datos[tipoPropiedad]?.Resumen ?? null,
       fileId: req.body.fileId,
-      rolGcba: datos[tipoPropiedad]?.RolGcba ?? null
+      rolGcba: datos[tipoPropiedad]?.Rol_GCBA ?? null
     });
 
     res.status(201).json({
